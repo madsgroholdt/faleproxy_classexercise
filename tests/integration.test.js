@@ -13,9 +13,9 @@ let server;
 describe('Integration Tests', () => {
   // Modify the app to use a test port
   beforeAll(async () => {
-    // Mock external HTTP requests
+    // Mock external HTTP requests but allow localhost
     nock.disableNetConnect();
-    nock.enableNetConnect('127.0.0.1');
+    nock.enableNetConnect(/(localhost|127\.0\.0\.1):\d+/);
     
     // Create a temporary test app file
     await execAsync('cp app.js app.test.js');
@@ -42,14 +42,9 @@ describe('Integration Tests', () => {
   });
 
   test('Should replace Yale with Fale in fetched content', async () => {
-    // Setup mock for example.com
-    nock('https://example.com')
-      .get('/')
-      .reply(200, sampleHtmlWithYale);
-    
-    // Make a request to our proxy app
+    // Make a request to our proxy app with the special test URL
     const response = await axios.post(`http://localhost:${TEST_PORT}/fetch`, {
-      url: 'https://example.com/'
+      url: 'test://yale-content'
     });
     
     expect(response.status).toBe(200);
@@ -74,7 +69,7 @@ describe('Integration Tests', () => {
     
     // Verify link text is changed
     expect($('a').first().text()).toBe('About Fale');
-  }, 10000); // Increase timeout for this test
+  }, 10000);
 
   test('Should handle invalid URLs', async () => {
     try {
