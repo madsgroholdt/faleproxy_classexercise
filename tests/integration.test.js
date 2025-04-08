@@ -1,7 +1,6 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 const { sampleHtmlWithYale } = require('./test-utils');
-const express = require('express');
 const app = require('../app');
 
 // Set a different port for testing to avoid conflict with the main app
@@ -10,22 +9,19 @@ let server;
 
 describe('Integration Tests', () => {
   beforeAll(async () => {
+    // Set test environment
+    process.env.NODE_ENV = 'test';
+    
     // Start the test server
     return new Promise((resolve) => {
-      server = app.listen(TEST_PORT, () => {
-        console.log(`Test server running on port ${TEST_PORT}`);
-        resolve();
-      });
+      server = app.listen(TEST_PORT, () => resolve());
     });
   });
 
   afterAll(async () => {
     // Close the test server
     return new Promise((resolve) => {
-      server.close(() => {
-        console.log('Test server closed');
-        resolve();
-      });
+      server.close(() => resolve());
     });
   });
 
@@ -66,7 +62,8 @@ describe('Integration Tests', () => {
       });
       fail('Should have thrown an error');
     } catch (error) {
-      expect(error.response.status).toBe(500);
+      expect(error.response.status).toBe(400);
+      expect(error.response.data.error).toBe('Invalid URL format');
     }
   });
 

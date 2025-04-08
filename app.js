@@ -4,7 +4,7 @@ const cheerio = require('cheerio');
 const path = require('path');
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 // Middleware to parse request bodies
 app.use(express.json());
@@ -30,9 +30,18 @@ app.post('/fetch', async (req, res) => {
     if (url === 'test://yale-content') {
       html = require('./tests/test-utils').sampleHtmlWithYale;
     } else {
-      // Fetch the content from the provided URL
-      const response = await axios.get(url);
-      html = response.data;
+      try {
+        // Validate URL before fetching
+        new URL(url);
+        // Fetch the content from the provided URL
+        const response = await axios.get(url);
+        html = response.data;
+      } catch (urlError) {
+        if (urlError.code === 'ERR_INVALID_URL') {
+          return res.status(400).json({ error: 'Invalid URL format' });
+        }
+        throw urlError;
+      }
     }
 
     // Use cheerio to parse HTML and selectively replace text content, not URLs
@@ -56,8 +65,8 @@ app.post('/fetch', async (req, res) => {
         $(this).replaceWith(newText);
       }
     });
-    
-    // Process title separately
+
+    // Also process the title tag
     const originalTitle = $('title').text();
     const newTitle = originalTitle
       .replace(/YALE/g, 'FALE')
@@ -67,7 +76,7 @@ app.post('/fetch', async (req, res) => {
       replacementsFound = true;
       $('title').text(newTitle);
     }
-    
+
     // Create a clean response object without circular references
     const responseData = {
       success: true,
@@ -80,7 +89,10 @@ app.post('/fetch', async (req, res) => {
 
     return res.json(responseData);
   } catch (error) {
-    console.error('Error fetching URL:', error.message);
+    // Only log errors in development
+    if (process.env.NODE_ENV !== 'test') {
+      console.error('Error fetching URL:', error.message);
+    }
     return res.status(500).json({ 
       error: `Failed to fetch content: ${error.message}` 
     });
