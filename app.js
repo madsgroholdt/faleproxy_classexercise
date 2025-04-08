@@ -32,20 +32,8 @@ app.post('/fetch', async (req, res) => {
     // Use cheerio to parse HTML and selectively replace text content, not URLs
     const $ = cheerio.load(html);
     
-    // Function to replace text but skip URLs and attributes
-    function replaceYaleWithFale(i, el) {
-      if ($(el).children().length === 0 || $(el).text().trim() !== '') {
-        // Get the HTML content of the element
-        let content = $(el).html();
-        
-        // Only process if it's a text node
-        if (content && $(el).children().length === 0) {
-          // Replace Yale with Fale in text content only
-          content = content.replace(/Yale/g, 'Fale').replace(/yale/g, 'fale').replace(/YALE/g, 'FALE');
-          $(el).html(content);
-        }
-      }
-    }
+    // Track if any replacements were made
+    let replacementsFound = false;
     
     // Process text nodes in the body
     $('body *').contents().filter(function() {
@@ -53,21 +41,34 @@ app.post('/fetch', async (req, res) => {
     }).each(function() {
       // Replace text content but not in URLs or attributes
       const text = $(this).text();
-      const newText = text.replace(/Yale/g, 'Fale').replace(/yale/g, 'fale').replace(/YALE/g, 'FALE');
+      const newText = text
+        .replace(/YALE/g, 'FALE')
+        .replace(/Yale/g, 'Fale')
+        .replace(/yale/g, 'fale');
       if (text !== newText) {
+        replacementsFound = true;
         $(this).replaceWith(newText);
       }
     });
     
     // Process title separately
-    const title = $('title').text().replace(/Yale/g, 'Fale').replace(/yale/g, 'fale').replace(/YALE/g, 'FALE');
-    $('title').text(title);
+    const originalTitle = $('title').text();
+    const newTitle = originalTitle
+      .replace(/YALE/g, 'FALE')
+      .replace(/Yale/g, 'Fale')
+      .replace(/yale/g, 'fale');
+    if (originalTitle !== newTitle) {
+      replacementsFound = true;
+      $('title').text(newTitle);
+    }
     
     return res.json({ 
       success: true, 
       content: $.html(),
-      title: title,
-      originalUrl: url
+      title: newTitle,
+      originalUrl: url,
+      replacementsFound: replacementsFound,
+      message: replacementsFound ? 'Yale references were found and replaced.' : 'No Yale references were found in the content.'
     });
   } catch (error) {
     console.error('Error fetching URL:', error.message);
