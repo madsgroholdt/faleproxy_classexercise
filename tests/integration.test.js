@@ -16,13 +16,22 @@ describe('Integration Tests', () => {
     return new Promise((resolve) => {
       server = app.listen(TEST_PORT, () => resolve());
     });
-  });
+  }, 10000); // Add timeout for slow CI environments
 
   afterAll(async () => {
-    // Close the test server
-    return new Promise((resolve) => {
-      server.close(() => resolve());
+    // Close the test server and cleanup
+    await new Promise((resolve) => {
+      if (server) {
+        server.close(() => resolve());
+      } else {
+        resolve();
+      }
     });
+  });
+
+  beforeEach(() => {
+    // Reset response timeout for each test
+    jest.setTimeout(10000);
   });
 
   test('Should replace Yale with Fale in fetched content', async () => {
