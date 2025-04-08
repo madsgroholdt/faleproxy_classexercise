@@ -5,7 +5,7 @@ const path = require('path');
 const { sampleHtmlWithYale } = require('./test-utils');
 
 // Import app but don't let it listen on a port (we'll use supertest for that)
-// Create a test app with the same route handlers
+// Create a test app with the same route handler
 const testApp = express();
 testApp.use(express.json());
 testApp.use(express.urlencoded({ extended: true }));
