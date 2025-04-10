@@ -3,7 +3,12 @@ name: Faleproxy CI
 on:
   push:
     branches:
-      - '**'  # This will trigger on all branches
+      - '**'
+
+env:
+  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
 jobs:
   test:
@@ -38,8 +43,9 @@ jobs:
 
   preview:
     needs: test
-    if: github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master'  # Only run on non-main branches
+    if: github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master'
     runs-on: ubuntu-latest
+    environment: preview
     
     steps:
     - uses: actions/checkout@v4
@@ -55,29 +61,17 @@ jobs:
     - name: Install Vercel CLI
       run: npm install --global vercel@latest
 
-    # Create .vercel/project.json
-    - name: Create Vercel Project Configuration
-      run: |
-        mkdir -p .vercel
-        echo '{"projectId":"${{ secrets.VERCEL_PROJECT_ID }}","orgId":"${{ secrets.VERCEL_ORG_ID }}"}' > .vercel/project.json
-      
     - name: Pull Vercel Environment Information
-      run: vercel pull --yes --environment=preview
-      env:
-        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
       
     - name: Build Project Artifacts
-      run: vercel build
-      env:
-        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
       
     - name: Deploy to Vercel (Preview)
       id: deploy-preview
       run: |
-        DEPLOYMENT_URL=$(vercel deploy --prebuilt)
+        DEPLOYMENT_URL=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
         echo "deployment_url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
-      env:
-        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
     - name: Comment Preview URL
       uses: actions/github-script@v6
@@ -101,8 +95,9 @@ jobs:
         
   deploy-production:
     needs: test
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'  # Only run on main/master branch
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
+    environment: production
     
     steps:
     - uses: actions/checkout@v4
@@ -117,24 +112,12 @@ jobs:
       
     - name: Install Vercel CLI
       run: npm install --global vercel@latest
-
-    # Create .vercel/project.json
-    - name: Create Vercel Project Configuration
-      run: |
-        mkdir -p .vercel
-        echo '{"projectId":"${{ secrets.VERCEL_PROJECT_ID }}","orgId":"${{ secrets.VERCEL_ORG_ID }}"}' > .vercel/project.json
       
     - name: Pull Vercel Environment Information
-      run: vercel pull --yes --environment=production
-      env:
-        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
       
     - name: Build Project Artifacts
-      run: vercel build --prod
-      env:
-        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
       
     - name: Deploy to Production
-      run: vercel deploy --prebuilt --prod
-      env:
-        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
